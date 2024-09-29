@@ -1,14 +1,13 @@
 import os
+# Set the OCR_AGENT environment variable
+os.environ['OCR_AGENT'] = 'unstructured.partition.utils.ocr_models.tesseract_ocr.OCRAgentTesseract'
 import json
 from dotenv import load_dotenv
 import streamlit as st
 import pytesseract
-
-# Set the OCR_AGENT environment variable
-os.environ['OCR_AGENT'] = 'unstructured.partition.utils.ocr_models.tesseract_ocr.OCRAgentTesseract'
-
+print(pytesseract.__version__)
 # Specify the path to the Tesseract executable
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"
 
 # Now import the Unstructured library modules
 from langchain_community.document_loaders import UnstructuredPDFLoader
@@ -18,6 +17,8 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_groq import ChatGroq
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
+import nltk
+nltk.download('punkt')
 
 working_dir = os.path.dirname(os.path.abspath(__file__))
 config_data = json.load(open(f"{working_dir}/config.json"))
@@ -28,9 +29,16 @@ GROQ_API_KEY = config_data["GROQ_API_KEY"]
 os.environ["GROQ_API_KEY"] = GROQ_API_KEY
 
 def load_document(file_path):
-    loader = UnstructuredPDFLoader(file_path)
-    documents = loader.load()
-    return documents
+    try:
+        loader = UnstructuredPDFLoader(file_path)
+        documents = loader.load()
+        return documents
+    except Exception as e:
+        print(f"Error loading document: {str(e)}")
+        raise
+    print(f"Attempting to load file: {file_path}")
+
+
 
 def setup_vectorstore(documents):
     embeddings = HuggingFaceEmbeddings()
