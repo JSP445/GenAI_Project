@@ -1,2 +1,13 @@
-groq
 streamlit
+python-dotenv
+langchain
+langchain-core
+langchain-community
+langchain-ollama
+pymongo
+faiss-cpu
+PyPDF2
+uuid
+groq
+langchain_groq
+nltk
