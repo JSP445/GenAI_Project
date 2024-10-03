@@ -73,12 +73,12 @@ def create_chain(vectorstore):
     return chain
 
 st.set_page_config(
-    page_title="Chat with Doc",
+    page_title="GenAI Report Analysis",
     page_icon="📄",
     layout="centered"
 )
 
-st.title("🦙 Chat with Doc - LLAMA 3.1")
+st.title("Generative AI Report Analysis 📈")
 
 # initialize the chat history in streamlit session state
 if "chat_history" not in st.session_state:
