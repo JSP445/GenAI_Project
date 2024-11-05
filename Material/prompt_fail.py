@@ -1,60 +1,100 @@
-class RPNCalculator:
+class Node:
+    """A helper Node class that stores key-value pairs and points to the next node in the sequence."""
+    def __init__(self, key, value):
+        self.key = key
+        self.value = value
+        self.next = None
+
+class LinkedHashMap:
+    """A hybrid data structure combining hash map and linked list properties with recursive capabilities."""
+    
     def __init__(self):
-        self.operators = {
-            '+': self.add,
-            '-': self.subtract,
-            '*': self.multiply,
-            '/': self.divide,
-            '%': self.modulus
-        }
+        self.head = None
+        self.tail = None
+        self.map = {}
 
-    def add(self, x, y):
-        return x + y
-
-    def subtract(self, x, y):
-        return x - y
-
-    def multiply(self, x, y):
-        return x * y
-
-    def divide(self, x, y):
-        if y == 0:
-            return "Error: Division by zero"
-        return x / y
-
-    def modulus(self, x, y):
-        return x % y
-
-    def calculate(self, operator, operand1, operand2):
-        if operator in self.operators:
-            return self.operators[operator](operand1, operand2)
-        else:
-            return "Error: Unsupported operator"
-
-    def run(self):
-        print("Reverse Polish Notation Calculator")
-        print("Enter in the format: operator operand1 operand2 (e.g., + 4 5)")
-        print("Available operators: +, -, *, /, %")
-        print("Type 'exit' to quit the program.")
+    def insert(self, key, value):
+        """Inserts a key-value pair in the map and links it in the sequence."""
+        # If key already exists, update value and return
+        if key in self.map:
+            self.map[key].value = value
+            return
         
-        while True:
-            user_input = input("Enter command: ")
-            if user_input.lower() == "exit":
-                print("Exiting the calculator. Goodbye!")
-                break
+        # Create a new node
+        new_node = Node(key, value)
+        self.map[key] = new_node
+        
+        # Append node to the end of the list
+        if not self.head:
+            self.head = new_node
+        else:
+            self.tail.next = new_node
+        
+        # Move the tail pointer
+        self.tail = new_node
+
+    def get(self, key):
+        """Retrieves the value associated with the key, raises KeyError if the key does not exist."""
+        if key not in self.map:
+            raise KeyError(f"Key '{key}' not found in LinkedHashMap.")
+        return self.map[key].value
+
+    def traverse(self):
+        """Traverses the linked structure in insertion order and prints key-value pairs."""
+        current = self.head
+        while current:
+            print(f"{current.key}: {current.value}")
+            current = current.next
+
+    def recursive_traverse(self, node=None, level=0):
+        """Recursively traverses the structure, handling nested LinkedHashMaps."""
+        if node is None:
+            node = self.head
             
-            try:
-                operator, operand1, operand2 = user_input.split()
-                operand1, operand2 = float(operand1), float(operand2)
-                result = self.calculate(operator, operand1, operand2)
-                print(f"Result: {result}")
-            except ValueError:
-                print("Error: Invalid input format. Please enter in the format: operator operand1 operand2")
-            except Exception as e:
-                print(f"An error occurred: {e}")
+        while node:
+            value = node.value
+            if isinstance(value, LinkedHashMap):
+                print("  " * level + f"{node.key}:")
+                value.recursive_traverse(value.head, level + 1)  # Recursive call
+            else:
+                print("  " * level + f"{node.key}: {value}")
+            node = node.next
 
+    def __contains__(self, key):
+        """Checks if a key exists in the map."""
+        return key in self.map
 
-# Run the RPN calculator
-if __name__ == "__main__":
-    calculator = RPNCalculator()
-    calculator.run()
+    def __getitem__(self, key):
+        """Gets the value for a given key, enabling bracket notation, raises KeyError if not found."""
+        return self.get(key)
+
+    def __setitem__(self, key, value):
+        """Sets a key-value pair, enabling bracket notation."""
+        self.insert(key, value)
+
+# Create the main LinkedHashMap
+lhm = LinkedHashMap()
+lhm.insert("name", "Alice")
+lhm.insert("age", 30)
+
+# Create a nested LinkedHashMap for address
+address = LinkedHashMap()
+address.insert("city", "Wonderland")
+address.insert("zip", "12345")
+
+# Insert the nested LinkedHashMap as a value
+lhm.insert("address", address)
+
+# Insert another level of nesting
+contacts = LinkedHashMap()
+contacts.insert("email", "alice@example.com")
+contacts.insert("phone", "555-1234")
+lhm.insert("contacts", contacts)
+
+# Regular traversal (non-recursive)
+print("Non-recursive traversal:")
+lhm.traverse()
+
+# Recursive traversal
+print("\nRecursive traversal:")
+lhm.recursive_traverse()
