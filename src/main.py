@@ -21,13 +21,11 @@ import nltk
 nltk.download('punkt')
 
 working_dir = os.path.dirname(os.path.abspath(__file__))
-config_data = json.load(open(f"{working_dir}/config.json"))
 
-GROQ_API_KEY = config_data["GROQ_API_KEY"]
+load_dotenv()
+
 
 # save the api key to environment variable
-os.environ["GROQ_API_KEY"] = GROQ_API_KEY
-
 def load_document(file_path):
     try:
         loader = UnstructuredPDFLoader(file_path)
@@ -53,7 +51,7 @@ def setup_vectorstore(documents):
 
 def create_chain(vectorstore):
     llm = ChatGroq(
-        model="llama-3.1-70b-versatile",
+        model="llama-3.1-8b-instant",
         temperature=0
     )
     retriever = vectorstore.as_retriever()
