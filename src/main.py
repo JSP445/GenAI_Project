@@ -1,114 +1,88 @@
-import os
-# Set the OCR_AGENT environment variable
-os.environ['OCR_AGENT'] = 'unstructured.partition.utils.ocr_models.tesseract_ocr.OCRAgentTesseract'
-import json
-from dotenv import load_dotenv
 import streamlit as st
-import pytesseract
-print(pytesseract.__version__)
-# Specify the path to the Tesseract executable
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"
+import subprocess
+import sys
+from parsers import crawler, pdfreader
 
-# Now import the Unstructured library modules
-from langchain_community.document_loaders import UnstructuredPDFLoader
-from langchain_text_splitters.character import CharacterTextSplitter
-from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_groq import ChatGroq
-from langchain.memory import ConversationBufferMemory
-from langchain.chains import ConversationalRetrievalChain
-import nltk
-nltk.download('punkt')
-
-working_dir = os.path.dirname(os.path.abspath(__file__))
-
-load_dotenv()
-
-
-# save the api key to environment variable
-def load_document(file_path):
-    try:
-        loader = UnstructuredPDFLoader(file_path)
-        documents = loader.load()
-        return documents
-    except Exception as e:
-        print(f"Error loading document: {str(e)}")
-        raise
-    print(f"Attempting to load file: {file_path}")
-
-
-
-def setup_vectorstore(documents):
-    embeddings = HuggingFaceEmbeddings()
-    text_splitter = CharacterTextSplitter(
-        separator="/n",
-        chunk_size=1000,
-        chunk_overlap=200
+def main():
+    """Page configuration"""
+    st.set_page_config(
+        page_title="Odyssey",
+        page_icon=":rocket:",
     )
-    doc_chunks = text_splitter.split_documents(documents)
-    vectorstore = FAISS.from_documents(doc_chunks, embeddings)
-    return vectorstore
+    
+    st.title("Odyssey 🚀")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    # Web Crawler
+    with col1:
+        st.markdown("### Web Crawler 🌐")
+        # Input for tag
+        tag = st.text_input("Enter Tag to Crawl", key="crawl_tag")
+        
+        # Input for pages
+        pages = st.number_input("Number of Pages", min_value=1, max_value=10, value=1, key="crawl_pages")
+        
+        # Site selection
+        site = st.selectbox("Select Site", ["stackoverflow", "devops-stackexchange"], key="crawl_site")
+        
+        # Web Crawl Button
+        web_crawl_button = st.button("Start Web Crawl", key="web_crawl", use_container_width=True)
 
-def create_chain(vectorstore):
-    llm = ChatGroq(
-        model="llama-3.1-8b-instant",
-        temperature=0
-    )
-    retriever = vectorstore.as_retriever()
-    memory = ConversationBufferMemory(
-        llm=llm,
-        output_key="answer",
-        memory_key="chat_history",
-        return_messages=True
-    )
-    chain = ConversationalRetrievalChain.from_llm(
-        llm=llm,
-        retriever=retriever,
-        chain_type="map_reduce",
-        memory=memory,
-        verbose=True
-    )
-    return chain
+    # PDF Reader
+    with col2:
+        st.markdown("### PDF Reader 📄")
+        pdf_upload_button = st.file_uploader("Upload PDF", type=["pdf"], key="pdf_upload", label_visibility="visible")
+        
+        # If a PDF is uploaded, run the PDF analysis page
+        if pdf_upload_button is not None:
+            pdfreader.run(pdf_upload_button)
 
-st.set_page_config(
-    page_title="GenAI Report Analysis",
-    page_icon="📄",
-    layout="centered"
-)
+    # Image uploader
+    with col3:
+        st.markdown("### Image Uploader 📷")
+        image_upload_button = st.file_uploader("Upload Image", type=["jpg", "jpeg", "png"], key="image_upload", label_visibility="visible")
 
-st.title("Generative AI Report Analysis 📈")
+    # Web Crawl Functionality
+    if web_crawl_button:
+        if not tag:
+            st.error("Please enter a tag to crawl")
+        else:
+            try:
+                # Prepare arguments for crawler
+                crawler_args = [
+                    "-t", tag,
+                    "-p", str(pages),
+                    "--site", site
+                ]
+                
+                # Run the crawler
+                crawler.main(crawler_args)
+                
+                st.success(f"Web crawl completed for {tag} on {site}")
+                
+                # Show output files
+                st.markdown("### Output Files")
+                import os
+                output_dir = "output_json"
+                if os.path.exists(output_dir):
+                    files = os.listdir(output_dir)
+                    for file in files:
+                        if file.startswith(f"questions-{tag}_"):
+                            st.write(f"✅ {file}")
+            
+            except Exception as e:
+                st.error(f"Error during web crawl: {str(e)}")
 
-# initialize the chat history in streamlit session state
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
+    # Display uploaded file details
+    if pdf_upload_button is not None:
+        st.success(f"PDF Uploaded: {pdf_upload_button.name}")
+    
+    if image_upload_button is not None:
+        st.success(f"Image Uploaded: {image_upload_button.name}")
+    
+    if web_crawl_button:
+        st.info("Web crawl initiated")
 
-uploaded_file = st.file_uploader(label="Upload your pdf file", type=["pdf"])
-
-if uploaded_file:
-    file_path = f"{working_dir}/{uploaded_file.name}"
-    with open(file_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
-
-    if "vectorstore" not in st.session_state:
-        st.session_state.vectorstore = setup_vectorstore(load_document(file_path))
-
-    if "conversation_chain" not in st.session_state:
-        st.session_state.conversation_chain = create_chain(st.session_state.vectorstore)
-
-for message in st.session_state.chat_history:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-user_input = st.chat_input("Ask Llama...")
-
-if user_input:
-    st.session_state.chat_history.append({"role": "user", "content": user_input})
-
-    with st.chat_message("user"):
-        st.markdown(user_input)
-
-    with st.chat_message("assistant"):
-        response = st.session_state.conversation_chain({"question": user_input})
-        assistant_response = response["answer"]
-        st.markdown(assistant_response)
-        st.session_state.chat_history.append({"role": "assistant", "content": assistant_response})
+if __name__ == "__main__":
+    main()
